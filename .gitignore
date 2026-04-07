@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+**/venv/
+**/__pycache__/
+*.pyc
+
+# Environment and Secrets
+**/.env
+.env.local
+.env.*.local
+
+# Build and Output
+dist/
+dist-ssr/
+*.log
+
+# Editor/System Files
+.vscode/
+.idea/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Project Specific
+/screenshots/
+**/uploaded_files/
+**/generated_charts/
