@@ -46,7 +46,8 @@ import {
   getChatSessionDetail,
   deleteChatSession,
   updateChatSession,
-  askGeneralQuestion
+  askGeneralQuestion,
+  getCurrentUser
 } from '../../services/api';
 
 const BACKEND_URL = 'http://localhost:8000';
@@ -447,10 +448,8 @@ function HomePage() {
         }
         setToken(storedToken);
 
-        const res = await axios.get(`${BACKEND_URL}/users/me`, {
-          headers: { Authorization: `Bearer ${storedToken}` },
-        });
-        setUser(res.data);
+        const userData = await getCurrentUser();
+        setUser(userData);
         
         await loadSessionsFromBackend();
         

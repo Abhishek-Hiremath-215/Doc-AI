@@ -13,6 +13,24 @@ DocAI is a high-performance, scalable **Retrieval-Augmented Generation (RAG)** p
 - **🕸️ Integrated Scraper**: Built-in web scraping tools to ingest live data directly into your knowledge base.
 - **📊 Dynamic Visualization**: Automated chart generation based on document data analysis.
 
+## 🎨 Portfolio & Resume Demo Mode
+
+To make this project easily evaluable on a resume portfolio, DocAI features a premium **Dual-Mode Architecture** built directly into the frontend. 
+
+- **🕹️ Live Mode**: Connects directly to the FastAPI backend, PostgreSQL, PostgreSQL/Neo4j database, and external vector embeddings (fully operational in a local/cloud environment).
+- **✨ Demo Mode (Recruiter Friendly)**: Completely bypasses backend dependencies, running fully client-side using a simulated mock database with **LocalStorage persistence**! This allows the entire platform (including database CRUD, organization creation, file uploading, workspace permissions, user activation, and chatbot chat sessions) to run statically on platforms like **Netlify**!
+
+### ⚡ Recruiter Quick Login
+When evaluated in Demo Mode, the login screen displays a series of custom cards designed for instant, frictionless evaluation:
+* **Super Admin**: Explores global system overview and organization controls.
+* **Organization Admin**: Manages workspace documents, users, and compliance rules.
+* **Regular User**: Focuses on document ingestion and intelligent RAG chat queries.
+
+Recruiters can click any profile to **pre-fill credentials and automatically log in with one click**!
+
+### 🎛️ Dynamic Environment Switcher
+A premium, glassmorphic floating toggle widget is rendered globally at the bottom-right corner of the app. Users can seamlessly switch between Live and Demo modes, automatically cleaning up sessions and re-initializing the environment.
+
 ## 🛠️ Tech Stack
 
 | Component | Technology |

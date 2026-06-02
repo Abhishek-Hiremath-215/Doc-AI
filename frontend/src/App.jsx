@@ -20,6 +20,7 @@ import SuperAdminDashboard from "./pages/super-admin/SuperAdminDashboard";
 
 // Shared
 import Profile from "./pages/shared/Profile";
+import DemoModeSwitcher from "./components/DemoModeSwitcher";
 
 function RoleBasedRedirect() {
   const { user } = useAuth();
@@ -117,6 +118,7 @@ function App() {
           <Route path="*" element={<RoleBasedRedirect />} />
         </Routes>
         <Toaster position="top-right" />
+        <DemoModeSwitcher />
       </BrowserRouter>
     </AuthProvider>
   );

@@ -15,6 +15,16 @@ const api = axios.create({
   },
 });
 
+// Helper to determine if we are in Demo Mode
+export const isDemoMode = () => {
+  const mode = localStorage.getItem("doc_ai_mode");
+  if (mode === null) {
+    localStorage.setItem("doc_ai_mode", "demo");
+    return true;
+  }
+  return mode === "demo";
+};
+
 // Request interceptor - attach JWT token and log requests
 api.interceptors.request.use(
   (config) => {
@@ -22,10 +32,7 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    
-    // Debug: Log outgoing requests
     console.log(`📤 API Request: ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`);
-    
     return config;
   },
   (error) => {
@@ -37,12 +44,10 @@ api.interceptors.request.use(
 // Response interceptor - handle 401 and log responses
 api.interceptors.response.use(
   (response) => {
-    // Debug: Log successful responses
     console.log(`✅ API Response: ${response.status} ${response.config.method?.toUpperCase()} ${response.config.url}`);
     return response;
   },
   (error) => {
-    // Log error details
     const status = error.response?.status;
     const method = error.config?.method?.toUpperCase();
     const url = error.config?.url;
@@ -50,28 +55,172 @@ api.interceptors.response.use(
     
     console.error(`❌ API Error: ${status} ${method} ${url} - ${message}`);
     
-    // Handle 401 globally
     if (status === 401) {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       console.warn("🔐 Unauthorized: cleared token & user");
       
-      // Redirect to login if not already there
       if (window.location.pathname !== '/login') {
         window.location.href = '/login';
       }
     }
-    
     return Promise.reject(error);
   }
 );
 
+/* ==========================================================================
+   MOCK DATA SYSTEM FOR PORTFOLIO DEMO MODE (PERSISTED IN LOCALSTORAGE)
+   ========================================================================== */
 
+const MOCK_CHART_PNG_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAHgAAAB4CAYAAAA5y+g3AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH5AYMDBQoIif+GgAAADtJREFUeN7t0EERAAAIA6BJ/57VwR+OgKGqaTszMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzF4tX3x15r1wAAAAASUVORK5CYII=";
+
+const DEFAULT_USERS = [
+  { id: 1, email: "superadmin@docai.com", role: "superadmin", organization_id: null, is_active: true, organization_name: null },
+  { id: 2, email: "orgadmin@docai.com", role: "orgadmin", organization_id: 1, is_active: true, organization_name: "Google Doc-AI Org" },
+  { id: 3, email: "user@docai.com", role: "user", organization_id: 1, is_active: true, organization_name: "Google Doc-AI Org" },
+  { id: 4, email: "john.doe@docai.com", role: "user", organization_id: 1, is_active: true, organization_name: "Google Doc-AI Org" }
+];
+
+const DEFAULT_ORGANIZATIONS = [
+  { id: 1, name: "Google Doc-AI Org", description: "Google's internal R&D organization for document artificial intelligence.", created_at: "2026-01-10T12:00:00Z" },
+  { id: 2, name: "Acme Corporation", description: "Standard manufacturing and global shipping solutions group.", created_at: "2026-02-15T09:30:00Z" },
+  { id: 3, name: "HealthTech Systems", description: "State-of-the-art medical billing and analysis operations.", created_at: "2026-03-20T14:45:00Z" }
+];
+
+const DEFAULT_PROJECTS = [
+  { id: 101, name: "Medical Research AI", description: "AI-powered analysis of medical research papers and clinical trial guidelines.", creator_id: 3, creator_email: "user@docai.com", created_at: "2026-04-01T10:00:00Z", permission_count: 2 },
+  { id: 102, name: "Financial Policy Generator", description: "Automatic generation and verification of financial audit compliance policies.", creator_id: 3, creator_email: "user@docai.com", created_at: "2026-04-15T11:30:00Z", permission_count: 1 },
+  { id: 103, name: "Corporate Guidelines", description: "Standard corporate HR policies, onboarding documents, and employee handbooks.", creator_id: 2, creator_email: "orgadmin@docai.com", created_at: "2026-05-01T08:15:00Z", permission_count: 4 }
+];
+
+const DEFAULT_FILES = {
+  101: [
+    { file_id: "f1", name: "clinical_trial_protocols.pdf", file_name: "clinical_trial_protocols.pdf", size: 2048576, upload_date: "2026-04-02T12:00:00Z" },
+    { file_id: "f2", name: "fda_approvals_2025.docx", file_name: "fda_approvals_2025.docx", size: 512400, upload_date: "2026-04-03T15:30:00Z" },
+    { file_id: "f3", name: "medical_ethics_charter.txt", file_name: "medical_ethics_charter.txt", size: 45000, upload_date: "2026-04-04T09:15:00Z" }
+  ],
+  102: [
+    { file_id: "f4", name: "q4_financial_audit.xlsx", file_name: "q4_financial_audit.xlsx", size: 4096000, upload_date: "2026-04-16T10:20:00Z" },
+    { file_id: "f5", name: "compliance_framework_v3.pdf", file_name: "compliance_framework_v3.pdf", size: 1548200, upload_date: "2026-04-17T11:45:00Z" }
+  ],
+  103: [
+    { file_id: "f6", name: "employee_handbook_2026.pdf", file_name: "employee_handbook_2026.pdf", size: 3125000, upload_date: "2026-05-02T09:00:00Z" },
+    { file_id: "f7", name: "remote_work_policy.docx", file_name: "remote_work_policy.docx", size: 890000, upload_date: "2026-05-03T14:10:00Z" },
+    { file_id: "f8", name: "code_of_conduct.txt", file_name: "code_of_conduct.txt", size: 120000, upload_date: "2026-05-04T10:30:00Z" }
+  ]
+};
+
+const DEFAULT_CHAT_SESSIONS = [
+  { id: 201, title: "Clinical Trial Review", project_id: 101, created_at: "2026-04-05T14:00:00Z", updated_at: "2026-04-05T15:30:00Z", message_count: 2 },
+  { id: 202, title: "Compliance Q&A", project_id: 102, created_at: "2026-04-18T10:00:00Z", updated_at: "2026-04-18T10:15:00Z", message_count: 2 },
+  { id: 203, title: "General FAQ Chat", project_id: null, created_at: "2026-05-05T09:00:00Z", updated_at: "2026-05-05T09:12:00Z", message_count: 2 }
+];
+
+const DEFAULT_CHAT_MESSAGES = {
+  201: [
+    { id: "m1", message_type: "user", content: "What are the primary safety endpoints in the protocols?", created_at: "2026-04-05T14:02:00Z", message_metadata: '{"context_used":false}' },
+    { id: "m2", message_type: "ai", content: "According to page 12 of the `clinical_trial_protocols.pdf`, the primary safety endpoints are defined as:\n\n1. **Adverse Events (TEAEs)**: Incidence of Grade 3 or 4 treatment-emergent adverse events within 28 days.\n2. **Liver Indicators**: Lab abnormalities in liver enzyme values exceeding 3x the upper limit of normal (ULN).\n3. **Serious Events**: Any Serious Adverse Event (SAE) leading to study discontinuation.\n\nAll safety indicators will be reviewed weekly by the Data Safety Monitoring Board (DSMB).", created_at: "2026-04-05T14:03:00Z", message_metadata: '{"context_used":true,"sources":["clinical_trial_protocols.pdf"]}' }
+  ],
+  202: [
+    { id: "m3", message_type: "user", content: "Are there any audit triggers in Q4 report?", created_at: "2026-04-18T10:01:00Z", message_metadata: '{"context_used":false}' },
+    { id: "m4", message_type: "ai", content: "Based on the `q4_financial_audit.xlsx` and `compliance_framework_v3.pdf`, there are two potential audit triggers detected:\n\n* **Discrepancy in Intercompany Transactions**: A variance of $234,000 between general ledger accounts and foreign entity entries (exceeds the 2% materiality threshold).\n* **Delayed Compliance Reporting**: Documentation for Q4 tax reserves was signed off 4 business days past the internal deadline.\n\nI recommend resolving the transaction variance before the official external auditor review.", created_at: "2026-04-18T10:02:00Z", message_metadata: '{"context_used":true,"sources":["q4_financial_audit.xlsx","compliance_framework_v3.pdf"]}' }
+  ],
+  203: [
+    { id: "m5", message_type: "user", content: "Can you outline a standard remote work policy?", created_at: "2026-05-05T09:02:00Z", message_metadata: '{"context_used":false}' },
+    { id: "m6", message_type: "ai", content: "Certainly! A standard remote work policy typically includes:\n\n1. **Eligibility**: Defines which job roles and performance tiers can work remotely.\n2. **Equipment & Stipends**: Outlines company-provided hardware (laptop, monitor) and utility stipends.\n3. **Core Hours & Responsibilities**: Establishes expected availability (e.g. 9 AM - 5 PM) and response times on messaging platforms.\n4. **Data Security**: Mandates VPN usage, zero-trust logins, and safe physical storage of devices.\n\nYou can customize these sections to align with your organization's operational model.", created_at: "2026-05-05T09:03:00Z", message_metadata: '{"context_used":false}' }
+  ]
+};
+
+// Simulated LocalStorage getters/setters
+const getMockList = (key, defaultList) => {
+  const data = localStorage.getItem(key);
+  if (!data) {
+    localStorage.setItem(key, JSON.stringify(defaultList));
+    return defaultList;
+  }
+  try {
+    return JSON.parse(data);
+  } catch (e) {
+    return defaultList;
+  }
+};
+
+const saveMockList = (key, list) => {
+  localStorage.setItem(key, JSON.stringify(list));
+};
+
+// Dynamic Chatbot response generation logic for Demo Mode
+const generateSmartMockResponse = (query, selectedFiles = [], projectId = null) => {
+  const text = String(query).toLowerCase();
+  
+  // Check if they want a chart/graph
+  const needsChart = text.includes("chart") || text.includes("graph") || text.includes("statistics") || text.includes("numbers") || text.includes("metrics") || text.includes("percentage");
+  
+  let answer = "";
+  let sources = selectedFiles.length > 0 ? selectedFiles : ["System AI Knowledge"];
+  
+  if (text.includes("hello") || text.includes("hi ") || text.includes("hey")) {
+    answer = "Hello! I am your Doc-AI Assistant. I can analyze any document uploaded to your projects and extract key answers, tables, or charts for you. How can I assist you today?";
+  } 
+  else if (text.includes("trial") || text.includes("clinical") || text.includes("fda") || text.includes("medical") || text.includes("doctor")) {
+    answer = "Based on the medical protocols and FDA documents, here are the key findings:\n\n* **Patient Recruitment**: Currently at 85% of target enrollment with 120 active participants across three clinical sites.\n* **Efficacy**: The experimental therapeutic cohort demonstrated a statistically significant 18% reduction in target biomarkers compared to the control group.\n* **FDA Compliance Status**: Phase II dossiers are prepared and fully compliant with FDA guidelines, targeting submission next quarter.";
+  }
+  else if (text.includes("audit") || text.includes("financial") || text.includes("tax") || text.includes("compliance") || text.includes("money") || text.includes("revenue")) {
+    answer = "Applying the audit compliance checks to your selected financial sheets, we see:\n\n1. **Materiality Verification**: All items exceeding the $50,000 threshold have been verified with complete invoice match trails.\n2. **Internal Controls**: Highly robust protocols are in place. However, the sign-off delay noted in Section 3 requires remedial attention.\n3. **Tax Reserves**: Configured adequately according to current accounting principles.";
+  }
+  else if (text.includes("work") || text.includes("employee") || text.includes("conduct") || text.includes("hr") || text.includes("handbook")) {
+    answer = "Analyzing the corporate onboarding handbook and employee files:\n\n* **Workplace Ethics**: Standard zero-tolerance rules are detailed on page 8 of the handbook. \n* **Core Scheduling**: Standard hours are 9:00 AM to 5:00 PM in local time zones, with hybrid schedules requiring manager sign-off.\n* **Security Checklist**: All remote team members must use mandatory secure VPN portals and undergo bi-annual data safety training.";
+  }
+  else {
+    // General response
+    answer = `I have analyzed the provided query: "${query}" against your selected project files ${JSON.stringify(sources)}.\n\nEverything appears standard and compliant. The documents support normal operating procedures, and no major risk alerts have been triggered. Let me know if you would like me to compile a specific compliance chart or outline particular sections!`;
+  }
+  
+  if (needsChart) {
+    return {
+      answer: answer + "\n\n📊 I have automatically compiled a visual metrics breakdown below to help you summarize this data efficiently.",
+      sources,
+      context_used: true,
+      message_id: `msg-ai-${Date.now()}`,
+      has_chart: true,
+      chartBase64: MOCK_CHART_PNG_BASE64,
+      chart_type: "bar"
+    };
+  }
+  
+  return {
+    answer,
+    sources,
+    context_used: selectedFiles.length > 0,
+    message_id: `msg-ai-${Date.now()}`,
+    has_chart: false,
+    chartBase64: null,
+    chart_type: null
+  };
+};
 
 /* ======================
       AUTHENTICATION
 ====================== */
 export const loginUser = async (credentials) => {
+  if (isDemoMode()) {
+    console.log("🎨 DEMO MODE ACTIVE - mocking loginUser");
+    const users = getMockList("mock_users", DEFAULT_USERS);
+    const foundUser = users.find(u => u.email === credentials.email) || {
+      id: Date.now(),
+      email: credentials.email,
+      role: "user",
+      organization_id: 1,
+      is_active: true,
+      organization_name: "Google Doc-AI Org"
+    };
+    
+    const mockToken = `mock-jwt-token-${foundUser.role}-${foundUser.email}`;
+    localStorage.setItem("token", mockToken);
+    localStorage.setItem("user", JSON.stringify(foundUser));
+    return { access_token: mockToken, token_type: "bearer" };
+  }
+
   try {
     const res = await api.post("/users/login", credentials);
     const { access_token } = res.data;
@@ -87,6 +236,20 @@ export const loginUser = async (credentials) => {
 };
 
 export const getCurrentUser = async () => {
+  if (isDemoMode()) {
+    console.log("🎨 DEMO MODE ACTIVE - mocking getCurrentUser");
+    const userJson = localStorage.getItem("user");
+    if (userJson) {
+      return JSON.parse(userJson);
+    }
+    const token = localStorage.getItem("token") || "mock-jwt-token-user-user@docai.com";
+    const role = token.split("-")[3] || "user";
+    const email = token.split("-")[4] || "user@docai.com";
+    const defaultUser = { id: 3, email, role, organization_id: 1, is_active: true, organization_name: "Google Doc-AI Org" };
+    localStorage.setItem("user", JSON.stringify(defaultUser));
+    return defaultUser;
+  }
+
   const token = localStorage.getItem("token");
   if (!token) {
     throw new Error("No token found, user not authenticated");
@@ -102,6 +265,22 @@ export const getCurrentUser = async () => {
 };
 
 export const registerUser = async (userData) => {
+  if (isDemoMode()) {
+    console.log("🎨 DEMO MODE ACTIVE - mocking registerUser");
+    const users = getMockList("mock_users", DEFAULT_USERS);
+    const newUser = {
+      id: Date.now(),
+      email: userData.email,
+      role: userData.role || "user",
+      organization_id: userData.organization_id || 1,
+      is_active: true,
+      organization_name: userData.organization_name || "Google Doc-AI Org"
+    };
+    users.push(newUser);
+    saveMockList("mock_users", users);
+    return newUser;
+  }
+
   try {
     const res = await api.post("/users/register", userData);
     return res.data;
@@ -111,13 +290,29 @@ export const registerUser = async (userData) => {
   }
 };
 
-
-
-
 /* ======================
       PROJECTS & FILES
 ====================== */
 export const createProject = async (name, description) => {
+  if (isDemoMode()) {
+    console.log("🎨 DEMO MODE ACTIVE - mocking createProject");
+    const projects = getMockList("mock_projects", DEFAULT_PROJECTS);
+    const newProj = {
+      id: Date.now(),
+      project_id: Date.now(),
+      name: name,
+      project_name: name,
+      description: description,
+      created_at: new Date().toISOString(),
+      creator_id: 3,
+      creator_email: "user@docai.com",
+      permission_count: 0
+    };
+    projects.push(newProj);
+    saveMockList("mock_projects", projects);
+    return newProj;
+  }
+
   try {
     const formData = new FormData();
     formData.append("project_name", name);
@@ -133,124 +328,100 @@ export const createProject = async (name, description) => {
   }
 };
 
-// ✅ FIXED: Use correct endpoint for fetching projects
 export const fetchProjects = async () => {
+  if (isDemoMode()) {
+    console.log("🎨 DEMO MODE ACTIVE - mocking fetchProjects");
+    return getMockList("mock_projects", DEFAULT_PROJECTS);
+  }
+
   try {
-    console.log("🔍 DEBUG - Frontend Project Fetch:");
-    
-    // Check current user in localStorage
-    const storedUser = JSON.parse(localStorage.getItem("user") || "null");
-    console.log("  👤 Stored User:", storedUser?.email, "ID:", storedUser?.id);
-    
-    // Check token
-    const token = localStorage.getItem("token");
-    console.log("  🔐 Token exists:", !!token);
-    console.log("  🔐 Token preview:", token?.substring(0, 50) + "...");
-    
     console.log("📋 Making API request to /projects/");
     const response = await api.get("/projects/");
-    
-    console.log("✅ API Response received:");
-    console.log("  Status:", response.status);
-    console.log("  Data type:", Array.isArray(response.data) ? 'Array' : typeof response.data);
-    console.log("  Data length:", response.data?.length || 0);
-    console.log("  Raw response:", response.data);
-    
     return response.data;
-    
   } catch (error) {
-    console.error("❌ Frontend fetch error:");
-    console.error("  Status:", error.response?.status);
-    console.error("  Message:", error.message);
-    console.error("  Response data:", error.response?.data);
+    console.error("❌ Frontend fetch error:", error);
     throw error;
   }
 };
 
-// ✅ FIXED: Use the same endpoint for admin projects (role-based filtering handled by backend)
 export const listAllProjectsAdmin = async () => {
+  if (isDemoMode()) {
+    console.log("🎨 DEMO MODE ACTIVE - mocking listAllProjectsAdmin");
+    return getMockList("mock_projects", DEFAULT_PROJECTS);
+  }
+
   try {
-    console.log("📋 Fetching admin projects from /projects/");
     const response = await api.get("/projects/");
-    console.log("✅ Admin projects response:", response.data);
-    return response.data; // Return data directly, not wrapped in projects property
+    return response.data;
   } catch (error) {
     console.error("❌ List admin projects failed:", error);
     throw error;
   }
 };
 
-// services/api.js
-// export const uploadFiles = async (projectId, files, options = {}) => {
-//   try {
-//     const formData = new FormData();
-    
-//     // Try multiple common parameter names
-//     files.forEach((file) => {
-//       formData.append("files", file);  // Current attempt
-//     });
-
-//     console.log(`📤 Uploading ${files.length} files to /upload/${projectId}/upload`);
-//     console.log('📋 FormData contents:', [...formData.entries()]);
-    
-//     const response = await api.post(`/upload/${projectId}/upload`, formData, {
-//       onUploadProgress: options.onUploadProgress,
-//       headers: {
-//         'Content-Type': undefined
-//       }
-//     });
-    
-//     console.log("✅ Upload successful:", response.data);
-//     return response.data;
-//   } catch (error) {
-//     // ✅ LOG THE DETAILED ERROR RESPONSE
-//     console.error("❌ Upload failed - Full error:", error);
-//     console.error("❌ Error response data:", error.response?.data);
-//     console.error("❌ Error status:", error.response?.status);
-//     console.error("❌ Error details:", JSON.stringify(error.response?.data, null, 2));
-    
-//     throw error;
-//   }
-// };
-
 export const uploadFiles = async (projectId, files, options = {}) => {
+  if (isDemoMode()) {
+    console.log("🎨 DEMO MODE ACTIVE - mocking uploadFiles");
+    const allFiles = getMockList("mock_project_files", DEFAULT_FILES);
+    const projFiles = allFiles[projectId] || [];
+    
+    // Simulate upload progress steps
+    let currentProgress = 0;
+    const interval = setInterval(() => {
+      currentProgress += 20;
+      if (options.onUploadProgress) {
+        options.onUploadProgress({ loaded: currentProgress, total: 100 });
+      }
+      if (currentProgress >= 100) {
+        clearInterval(interval);
+      }
+    }, 150);
+
+    files.forEach((f, idx) => {
+      projFiles.push({
+        file_id: `mock-f-${Date.now()}-${idx}`,
+        name: f.name,
+        file_name: f.name,
+        size: f.size || 102400,
+        upload_date: new Date().toISOString()
+      });
+    });
+
+    allFiles[projectId] = projFiles;
+    saveMockList("mock_project_files", allFiles);
+
+    // Sleep for simulated upload duration
+    await new Promise(resolve => setTimeout(resolve, 800));
+    return { message: "Files uploaded successfully", project_id: projectId };
+  }
+
   try {
     const formData = new FormData();
-    
     files.forEach((file) => {
       formData.append("files", file);
     });
-
-    console.log(`📤 Uploading ${files.length} files to /upload/${projectId}/upload`);
-    console.log('📋 FormData contents:', [...formData.entries()]);
-    
     const response = await api.post(`/upload/${projectId}/upload`, formData, {
       onUploadProgress: options.onUploadProgress,
-      timeout: 600000,  // ✅ 10 minutes timeout for large files
+      timeout: 600000,
       headers: {
-        'Content-Type': 'multipart/form-data'  // ✅ Explicit content type
+        'Content-Type': 'multipart/form-data'
       }
     });
-    
-    console.log("✅ Upload successful:", response.data);
     return response.data;
   } catch (error) {
-    console.error("❌ Upload failed - Full error:", error);
-    console.error("❌ Error response data:", error.response?.data);
-    console.error("❌ Error status:", error.response?.status);
-    console.error("❌ Error message:", error.message);
-    
-    // Handle timeout specifically
-    if (error.code === 'ECONNABORTED') {
-      console.error("⏱️ Upload timeout - file processing took too long");
-      throw new Error("Upload timeout. Large files may take several minutes to process.");
-    }
-    
+    console.error("❌ Upload failed:", error);
     throw error;
   }
 };
 
 export const fetchProjectFiles = async (projectId) => {
+  if (isDemoMode()) {
+    console.log("🎨 DEMO MODE ACTIVE - mocking fetchProjectFiles for project:", projectId);
+    const allFiles = getMockList("mock_project_files", DEFAULT_FILES);
+    const files = allFiles[projectId] || [];
+    return { files };
+  }
+
   try {
     const response = await api.get(`/projects/${projectId}/files`);
     return response.data;
@@ -260,18 +431,20 @@ export const fetchProjectFiles = async (projectId) => {
   }
 };
 
-
-
-
 /* ======================
       CHATBOT
 ====================== */
 export const searchFiles = async (query, projectId) => {
+  if (isDemoMode()) {
+    console.log("🎨 DEMO MODE ACTIVE - mocking searchFiles");
+    return [
+      { filename: "compliance_framework_v3.pdf", text: "Section 3.2.1: Audit limits mandate 2% materiality calculations on intercompany operations." },
+      { filename: "clinical_trial_protocols.pdf", text: "Page 12: Lab values exceeding 3x ULN represent standard adverse markers." }
+    ];
+  }
+
   try {
-    const response = await api.post("/query/search_files", { 
-      query, 
-      project_id: projectId 
-    });
+    const response = await api.post("/query/search_files", { query, project_id: projectId });
     return response.data;
   } catch (error) {
     console.error("❌ Search files failed:", error);
@@ -280,79 +453,40 @@ export const searchFiles = async (query, projectId) => {
 };
 
 export const askQuestion = async (question, selectedFiles, projectId) => {
-  console.log('🔍 askQuestion called with:', { question, selectedFiles, projectId });
-  
-  if (!question || !projectId) {
-    throw new Error("Question and project ID are required");
+  if (isDemoMode()) {
+    console.log("🎨 DEMO MODE ACTIVE - mocking askQuestion");
+    return generateSmartMockResponse(question, selectedFiles, projectId);
   }
-  
+
   try {
     const filesArray = Array.isArray(selectedFiles)
       ? selectedFiles.map((f) => (typeof f === "string" ? f : f.filename || f.file_name))
       : [];
-    
-    console.log('📤 Sending request to /query/ask:', { 
-      query: question, 
-      selected_files: filesArray, 
-      project_id: projectId 
-    });
-    
-    const res = await api.post("/query/ask", { 
-      query: question, 
-      selected_files: filesArray, 
-      project_id: projectId 
-    });
-    
-    console.log('✅ Full response received:', res);
-    console.log('✅ Response data:', res.data);
-    console.log('✅ Response status:', res.status);
-    
-    // Check if response has expected structure
-    if (!res.data || typeof res.data.answer === 'undefined') {
-      console.error('❌ Invalid response structure:', res.data);
-      throw new Error('Invalid response from server');
-    }
-    
-    // Handle empty or very short answers
-    if (!res.data.answer || res.data.answer.trim().length === 0) {
-      console.warn('⚠️ Empty answer received');
-      return {
-        answer: "No answer was generated for your question. Please try rephrasing or check if the document contains relevant information.",
-        chartBase64: null,
-        chartUrl: null,
-        images: []
-      };
-    }
-    
-    console.log('✅ Processing successful response with answer length:', res.data.answer.length);
-    
+    const res = await api.post("/query/ask", { query: question, selected_files: filesArray, project_id: projectId });
     const images = res.data.chartUrl ? [`${BACKEND_URL}${res.data.chartUrl}`] : [];
     return { ...res.data, images };
-    
   } catch (error) {
     console.error("❌ Ask question failed:", error);
-    console.error("❌ Error response data:", error.response?.data);
-    console.error("❌ Error status:", error.response?.status);
-    console.error("❌ Error config:", error.config);
-    
-    // Re-throw with more context
-    const errorMessage = error.response?.data?.detail || error.message || 'Unknown error occurred';
-    throw new Error(`Failed to get answer: ${errorMessage}`);
+    throw error;
   }
 };
-
-
 
 /* ======================
       USERS & ADMIN
 ====================== */
-
-// ✅ UPDATED: Call correct endpoint with organization data
 export const fetchUsers = async (organizationFilter = null) => {
+  if (isDemoMode()) {
+    console.log("🎨 DEMO MODE ACTIVE - mocking fetchUsers");
+    const users = getMockList("mock_users", DEFAULT_USERS);
+    if (organizationFilter) {
+      return users.filter(u => u.organization_name === organizationFilter || String(u.organization_id) === String(organizationFilter));
+    }
+    return users;
+  }
+
   try {
     const params = organizationFilter ? { organization_filter: organizationFilter } : {};
     const response = await api.get("/users/", { params });
-    console.log("✅ Fetched users with organizations:", response.data);
     return response.data;
   } catch (error) {
     console.error("❌ Fetch users failed:", error);
@@ -360,13 +494,19 @@ export const fetchUsers = async (organizationFilter = null) => {
   }
 };
 
-// ✅ UPDATED: Call correct endpoint for users with projects
 export const fetchUsersWithProjects = async (page = 1, limit = 100) => {
+  if (isDemoMode()) {
+    console.log("🎨 DEMO MODE ACTIVE - mocking fetchUsersWithProjects");
+    const users = getMockList("mock_users", DEFAULT_USERS);
+    return users.map(u => ({
+      ...u,
+      projects_owned: 1,
+      projects_shared: 2
+    }));
+  }
+
   try {
-    const response = await api.get("/users/with-projects", { 
-      params: { page, limit } 
-    });
-    console.log("✅ Fetched users with projects and organizations:", response.data);
+    const response = await api.get("/users/with-projects", { params: { page, limit } });
     return response.data;
   } catch (error) {
     console.error("❌ Fetch users with projects failed:", error);
@@ -374,8 +514,13 @@ export const fetchUsersWithProjects = async (page = 1, limit = 100) => {
   }
 };
 
-// ✅ NEW: Get organizations for filter dropdown
 export const getUsersOrganizations = async () => {
+  if (isDemoMode()) {
+    console.log("🎨 DEMO MODE ACTIVE - mocking getUsersOrganizations");
+    const orgs = getMockList("mock_organizations", DEFAULT_ORGANIZATIONS);
+    return orgs.map(o => o.name);
+  }
+
   try {
     const response = await api.get("/users/organizations");
     return response.data;
@@ -385,8 +530,15 @@ export const getUsersOrganizations = async () => {
   }
 };
 
-// ✅ UPDATED: Use correct endpoints for user actions
 export const toggleUserActive = async (userId, isActive) => {
+  if (isDemoMode()) {
+    console.log("🎨 DEMO MODE ACTIVE - mocking toggleUserActive");
+    const users = getMockList("mock_users", DEFAULT_USERS);
+    const updated = users.map(u => u.id === userId ? { ...u, is_active: !u.is_active } : u);
+    saveMockList("mock_users", updated);
+    return { message: "Status updated successfully" };
+  }
+
   try {
     const response = await api.put(`/users/${userId}/activate`);
     return response.data;
@@ -397,6 +549,14 @@ export const toggleUserActive = async (userId, isActive) => {
 };
 
 export const deleteUser = async (userId) => {
+  if (isDemoMode()) {
+    console.log("🎨 DEMO MODE ACTIVE - mocking deleteUser");
+    const users = getMockList("mock_users", DEFAULT_USERS);
+    const filtered = users.filter(u => u.id !== userId);
+    saveMockList("mock_users", filtered);
+    return { message: "User deleted successfully" };
+  }
+
   try {
     const response = await api.delete(`/users/${userId}`);
     return response.data;
@@ -406,12 +566,20 @@ export const deleteUser = async (userId) => {
   }
 };
 
-// ✅ NEW: Assign user to organization
 export const assignUserToOrganization = async (userId, organizationId) => {
+  if (isDemoMode()) {
+    console.log("🎨 DEMO MODE ACTIVE - mocking assignUserToOrganization");
+    const users = getMockList("mock_users", DEFAULT_USERS);
+    const orgs = getMockList("mock_organizations", DEFAULT_ORGANIZATIONS);
+    const selectedOrg = orgs.find(o => o.id === organizationId) || { name: "Google Doc-AI Org" };
+    
+    const updated = users.map(u => u.id === userId ? { ...u, organization_id: organizationId, organization_name: selectedOrg.name } : u);
+    saveMockList("mock_users", updated);
+    return { message: "User organization assigned successfully" };
+  }
+
   try {
-    const response = await api.put(`/users/${userId}/organization`, {
-      organization_id: organizationId
-    });
+    const response = await api.put(`/users/${userId}/organization`, { organization_id: organizationId });
     return response.data;
   } catch (error) {
     console.error("❌ Assign user to organization failed:", error);
@@ -419,20 +587,19 @@ export const assignUserToOrganization = async (userId, organizationId) => {
   }
 };
 
-// Keep this for backward compatibility
 export const listUsers = fetchUsers;
-
-
-
 
 /* ======================
       ORGANIZATIONS
 ====================== */
 export const listOrganizations = async () => {
+  if (isDemoMode()) {
+    console.log("🎨 DEMO MODE ACTIVE - mocking listOrganizations");
+    return getMockList("mock_organizations", DEFAULT_ORGANIZATIONS);
+  }
+
   try {
-    console.log("📋 Fetching organizations...");
     const response = await api.get("/organizations/");
-    console.log("✅ Organizations fetched successfully:", response.data);
     return response.data;
   } catch (error) {
     console.error("❌ List organizations failed:", error);
@@ -441,48 +608,44 @@ export const listOrganizations = async () => {
 };
 
 export const createOrganization = async (name, adminEmail, adminPassword, description = "") => {
-  try {
-    console.log("🏢 Creating organization with payload:", {
+  if (isDemoMode()) {
+    console.log("🎨 DEMO MODE ACTIVE - mocking createOrganization");
+    const orgs = getMockList("mock_organizations", DEFAULT_ORGANIZATIONS);
+    const newOrg = {
+      id: Date.now(),
       name,
       description,
-      admin_email: adminEmail,
-      // Don't log password
-    });
-    
+      created_at: new Date().toISOString()
+    };
+    orgs.push(newOrg);
+    saveMockList("mock_organizations", orgs);
+    return newOrg;
+  }
+
+  try {
     const payload = {
       name: name.trim(),
       description: description.trim(),
       admin_email: adminEmail.trim(),
       admin_password: adminPassword,
     };
-    
-    // Validate payload before sending
-    if (!payload.name) {
-      throw new Error("Organization name is required");
-    }
-    if (!payload.admin_email) {
-      throw new Error("Admin email is required");
-    }
-    if (!payload.admin_password) {
-      throw new Error("Admin password is required");
-    }
-    
-    console.log("📤 Sending POST request to /organizations/");
     const response = await api.post("/organizations/", payload);
-    console.log("✅ Organization created successfully:", response.data);
     return response.data;
   } catch (error) {
     console.error("❌ Create organization failed:", error);
-    if (error.response) {
-      console.error("Response status:", error.response.status);
-      console.error("Response data:", error.response.data);
-      console.error("Response headers:", error.response.headers);
-    }
     throw error;
   }
 };
 
 export const deleteOrganization = async (organizationId) => {
+  if (isDemoMode()) {
+    console.log("🎨 DEMO MODE ACTIVE - mocking deleteOrganization");
+    const orgs = getMockList("mock_organizations", DEFAULT_ORGANIZATIONS);
+    const filtered = orgs.filter(o => o.id !== organizationId);
+    saveMockList("mock_organizations", filtered);
+    return { message: "Organization deleted successfully" };
+  }
+
   try {
     const response = await api.delete(`/organizations/${organizationId}/`);
     return response.data;
@@ -493,6 +656,14 @@ export const deleteOrganization = async (organizationId) => {
 };
 
 export const updateOrganization = async (organizationId, data) => {
+  if (isDemoMode()) {
+    console.log("🎨 DEMO MODE ACTIVE - mocking updateOrganization");
+    const orgs = getMockList("mock_organizations", DEFAULT_ORGANIZATIONS);
+    const updated = orgs.map(o => o.id === organizationId ? { ...o, ...data } : o);
+    saveMockList("mock_organizations", updated);
+    return { message: "Organization updated successfully" };
+  }
+
   try {
     const response = await api.put(`/organizations/${organizationId}/`, data);
     return response.data;
@@ -502,12 +673,14 @@ export const updateOrganization = async (organizationId, data) => {
   }
 };
 
-// Add this to your services/api.js file
 export const createOrganizationUser = async (userData) => {
+  if (isDemoMode()) {
+    console.log("🎨 DEMO MODE ACTIVE - mocking createOrganizationUser");
+    return registerUser(userData);
+  }
+
   try {
-    console.log("🔒 Creating organization user:", userData.email);
     const response = await api.post("/organizations/users", userData);
-    console.log("✅ Organization user created successfully:", response.data);
     return response.data;
   } catch (error) {
     console.error("❌ Create organization user failed:", error);
@@ -516,10 +689,13 @@ export const createOrganizationUser = async (userData) => {
 };
 
 export const listOrganizationUsers = async () => {
+  if (isDemoMode()) {
+    console.log("🎨 DEMO MODE ACTIVE - mocking listOrganizationUsers");
+    return fetchUsers();
+  }
+
   try {
-    // ✅ FIXED: Use the main users endpoint instead of non-existent /users/organization
     const response = await api.get('/users/');
-    console.log("✅ Organization users loaded:", response.data);
     return response.data;
   } catch (error) {
     console.error("❌ List organization users failed:", error);
@@ -528,6 +704,11 @@ export const listOrganizationUsers = async () => {
 };
 
 export const enhanceQuery = async (query) => {
+  if (isDemoMode()) {
+    console.log("🎨 DEMO MODE ACTIVE - mocking enhanceQuery");
+    return `Analyze compliance standards, materiality limits, and key operational controls to verify if the following statement is true and fully substantiated in the files: "${query}"`;
+  }
+
   try {
     const res = await api.post("/query/enhance", { query });
     return res.data.enhanced_query;
@@ -537,55 +718,41 @@ export const enhanceQuery = async (query) => {
   }
 };
 
-
-
-
 /* ===============================================
-    PROJECT PERMISSION & ASSIGNMENT APIs - FINAL VERSION
+    PROJECT PERMISSION & ASSIGNMENT APIs
 =============================================== */
-
-// ✅ CRITICAL FIX: Grant access (permissions without ownership change)
 export const grantProjectAccess = async (projectId, userId) => {
+  if (isDemoMode()) {
+    return { message: "Access granted successfully" };
+  }
   try {
-    console.log(`🔐 Granting access: Project ${projectId} to User ${userId}`);
-    const response = await api.post(`/projects/${projectId}/grant-access`, {
-      user_id: userId
-    }, {
-      headers: { 'Content-Type': 'application/json' } // ✅ Explicit header
-    });
-    console.log('✅ Access granted successfully:', response.data);
+    const response = await api.post(`/projects/${projectId}/grant-access`, { user_id: userId });
     return response.data;
   } catch (error) {
     console.error('❌ Error granting project access:', error);
-    console.error('❌ Error details:', error.response?.data);
     throw error;
   }
 };
 
-// ✅ CRITICAL FIX: Assign project (ownership transfer) - SuperAdmin only
 export const assignProjectToUser = async (projectId, userId) => {
+  if (isDemoMode()) {
+    return { message: "Project assigned successfully" };
+  }
   try {
-    console.log(`🔄 Assigning project: Project ${projectId} to User ${userId}`);
-    const response = await api.post(`/projects/${projectId}/assign`, {
-      user_id: userId
-    }, {
-      headers: { 'Content-Type': 'application/json' } // ✅ Explicit header
-    });
-    console.log('✅ Project assigned successfully:', response.data);
+    const response = await api.post(`/projects/${projectId}/assign`, { user_id: userId });
     return response.data;
   } catch (error) {
     console.error('❌ Error assigning project:', error);
-    console.error('❌ Error details:', error.response?.data);
     throw error;
   }
 };
 
-// ✅ FIXED: Revoke access
 export const revokeProjectAccess = async (projectId, userId) => {
+  if (isDemoMode()) {
+    return { message: "Access revoked successfully" };
+  }
   try {
-    console.log(`🚫 Revoking access: Project ${projectId} from User ${userId}`);
     const response = await api.delete(`/projects/${projectId}/revoke-access/${userId}`);
-    console.log('✅ Access revoked successfully:', response.data);
     return response.data;
   } catch (error) {
     console.error('❌ Error revoking project access:', error);
@@ -593,71 +760,71 @@ export const revokeProjectAccess = async (projectId, userId) => {
   }
 };
 
-// ✅ Get project permissions (who has access)
 export const getProjectPermissions = async (projectId) => {
+  if (isDemoMode()) {
+    return {
+      permissions: [
+        { user_id: 4, user_email: "john.doe@docai.com", granted_at: new Date().toISOString() }
+      ]
+    };
+  }
   try {
-    console.log(`📋 Fetching permissions for Project ${projectId}`);
     const response = await api.get(`/projects/${projectId}/permissions`);
-    console.log('✅ Permissions fetched:', response.data);
     return response.data;
   } catch (error) {
     console.error('❌ Error fetching project permissions:', error);
-    return { permissions: [] }; // Return empty permissions on error
+    return { permissions: [] };
   }
 };
 
-// ✅ Get available users to grant access to
 export const getAvailableUsersForProject = async (projectId) => {
+  if (isDemoMode()) {
+    return [
+      { id: 4, email: "john.doe@docai.com" }
+    ];
+  }
   try {
-    console.log(`👥 Fetching available users for Project ${projectId}`);
     const response = await api.get(`/projects/${projectId}/available-users`);
-    console.log('✅ Available users fetched:', response.data);
     return response.data;
   } catch (error) {
     console.error('❌ Error fetching available users:', error);
-    return []; // Return empty array on error
+    return [];
   }
 };
 
-// ✅ NEW: Get ALL users for SuperAdmin assignment
 export const getAllUsersForAssignment = async (projectId) => {
+  if (isDemoMode()) {
+    return DEFAULT_USERS;
+  }
   try {
-    console.log(`👥 Fetching ALL users for assignment to Project ${projectId}`);
     const response = await api.get(`/projects/${projectId}/all-users`);
-    console.log('✅ All users for assignment fetched:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error fetching all users for assignment:', error);
-    console.log('⚠️ Falling back to regular fetchUsers');
     try {
       const users = await fetchUsers();
       return users || [];
-    } catch (fallbackError) {
-      console.error('❌ Fallback user fetch failed:', fallbackError);
+    } catch {
       return [];
     }
   }
 };
 
-// ✅ CRITICAL FIX: Get assigned users - properly handles backend endpoint and fallback
 export const getAssignedUsers = async (projectId) => {
+  if (isDemoMode()) {
+    return {
+      project_id: projectId,
+      assigned_users: [
+        { user_id: 3, user_email: "user@docai.com", user_role: "user", assigned_at: new Date().toISOString(), assigned_by: "System" }
+      ]
+    };
+  }
   try {
-    console.log(`📋 Fetching assigned users for Project ${projectId}`);
-    
-    // Try the dedicated assigned-users endpoint first
     const response = await api.get(`/projects/${projectId}/assigned-users`);
-    console.log('✅ Assigned users fetched via dedicated endpoint:', response.data);
     return response.data;
-    
-  } catch (specificError) {
-    console.log('⚠️ Assigned users endpoint failed, using permissions fallback');
-    
+  } catch {
     try {
-      // Fallback to permissions endpoint
       const permissionsResponse = await getProjectPermissions(projectId);
       const assignedUsers = permissionsResponse.permissions || [];
-      
-      // Transform permissions to assigned users format
       const transformedUsers = assignedUsers.map(perm => ({
         user_id: perm.user_id,
         user_email: perm.user_email,
@@ -665,48 +832,34 @@ export const getAssignedUsers = async (projectId) => {
         assigned_at: perm.granted_at,
         assigned_by: perm.granted_by || 'System'
       }));
-      
-      console.log('✅ Using permissions as assigned users:', transformedUsers);
-      
       return {
         project_id: projectId,
         project_name: 'Unknown',
         project_owner: 'Unknown',
         assigned_users: transformedUsers
       };
-    } catch (fallbackError) {
-      console.error('❌ Fallback permissions fetch failed:', fallbackError);
-      return { 
-        project_id: projectId,
-        assigned_users: [] 
-      };
+    } catch {
+      return { project_id: projectId, assigned_users: [] };
     }
   }
 };
 
-// ✅ NEW: Revoke project assignment
 export const revokeProjectAssignment = async (projectId, userId) => {
+  if (isDemoMode()) {
+    return { message: "Assignment revoked successfully" };
+  }
   try {
-    console.log(`🚫 Revoking assignment: Project ${projectId} from User ${userId}`);
-    
-    // Try dedicated revoke assignment endpoint first
-    try {
-      const response = await api.delete(`/projects/${projectId}/revoke-assignment/${userId}`);
-      console.log('✅ Assignment revoked via dedicated endpoint:', response.data);
-      return response.data;
-    } catch (specificError) {
-      console.log('⚠️ Specific revoke endpoint not available, using access revoke');
-      // Fallback to regular access revoke
-      return await revokeProjectAccess(projectId, userId);
-    }
-  } catch (error) {
-    console.error('❌ Error revoking assignment:', error);
-    throw error;
+    const response = await api.delete(`/projects/${projectId}/revoke-assignment/${userId}`);
+    return response.data;
+  } catch {
+    return await revokeProjectAccess(projectId, userId);
   }
 };
 
-// Updated: Get projects (now returns only accessible projects)
 export const getProjects = async () => {
+  if (isDemoMode()) {
+    return fetchProjects();
+  }
   try {
     const response = await api.get('/projects/');
     return response.data;
@@ -717,6 +870,9 @@ export const getProjects = async () => {
 };
 
 export const toggleUserStatus = async (userId) => {
+  if (isDemoMode()) {
+    return toggleUserActive(userId, null);
+  }
   try {
     const response = await api.put(`/admin/users/${userId}/toggle`);
     return response.data;
@@ -725,153 +881,221 @@ export const toggleUserStatus = async (userId) => {
     throw error;
   }
 };
+
 /* ======================
       CHAT SESSION API
 ====================== */
-
-
-// Get all chat sessions for user
 export const getChatSessions = async (projectId = null) => {
+  if (isDemoMode()) {
+    console.log("🎨 DEMO MODE ACTIVE - mocking getChatSessions");
+    const sessions = getMockList("mock_chat_sessions", DEFAULT_CHAT_SESSIONS);
+    if (projectId) {
+      return sessions.filter(s => s.project_id === Number(projectId) || s.project_id === String(projectId));
+    }
+    return sessions;
+  }
+
   try {
-    console.log('📋 Getting user chat sessions...');
     const params = projectId ? { project_id: projectId } : {};
     const response = await api.get('/chat/sessions', { params });
-    console.log('✅ User chat sessions retrieved:', response.data?.length || 0);
     return response.data;
   } catch (error) {
-    console.error('❌ Get chat sessions failed:', error.response?.data || error.message);
+    console.error('❌ Get chat sessions failed:', error);
     throw error;
   }
 };
 
-// ✅ UPDATED: Create new chat session with user association
 export const createChatSession = async (projectId, title = 'New Chat') => {
-  try {
-    const payload = {
-      title: title || 'New Chat'
+  if (isDemoMode()) {
+    console.log("🎨 DEMO MODE ACTIVE - mocking createChatSession");
+    const sessions = getMockList("mock_chat_sessions", DEFAULT_CHAT_SESSIONS);
+    const newSession = {
+      id: Date.now(),
+      title,
+      project_id: projectId ? Number(projectId) : null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      message_count: 0
     };
-    
-    // Only add project_id if it's a valid number
+    sessions.unshift(newSession);
+    saveMockList("mock_chat_sessions", sessions);
+    return newSession;
+  }
+
+  try {
+    const payload = { title: title || 'New Chat' };
     if (projectId && !isNaN(Number(projectId))) {
       payload.project_id = Number(projectId);
     }
-    
-    console.log('📤 Creating user chat session with payload:', JSON.stringify(payload, null, 2));
-    
     const response = await api.post('/chat/sessions', payload);
-    
-    console.log('✅ User session created with ID:', response.data.id);
     return response.data;
   } catch (error) {
-    console.error('❌ Create session API error:', error.response?.data);
+    console.error('❌ Create session API error:', error);
     throw error;
   }
 };
 
-// Get session details with messages (user-filtered)
 export const getChatSessionDetail = async (sessionId) => {
+  if (isDemoMode()) {
+    console.log("🎨 DEMO MODE ACTIVE - mocking getChatSessionDetail");
+    const sessions = getMockList("mock_chat_sessions", DEFAULT_CHAT_SESSIONS);
+    const session = sessions.find(s => s.id === Number(sessionId) || s.id === String(sessionId));
+    
+    const allMessages = getMockList("mock_chat_messages", DEFAULT_CHAT_MESSAGES);
+    const messages = allMessages[sessionId] || [];
+    
+    return {
+      ...session,
+      messages
+    };
+  }
+
   try {
-    console.log('📋 Getting user session detail for:', sessionId);
     const response = await api.get(`/chat/sessions/${sessionId}`);
-    console.log('✅ User session detail retrieved');
     return response.data;
   } catch (error) {
-    console.error('❌ Get session detail failed:', error.response?.data || error.message);
+    console.error('❌ Get session detail failed:', error);
     throw error;
   }
 };
 
-// Update session (user-owned only)
 export const updateChatSession = async (sessionId, updates) => {
+  if (isDemoMode()) {
+    console.log("🎨 DEMO MODE ACTIVE - mocking updateChatSession");
+    const sessions = getMockList("mock_chat_sessions", DEFAULT_CHAT_SESSIONS);
+    const updated = sessions.map(s => (s.id === Number(sessionId) || s.id === String(sessionId)) ? { ...s, ...updates, updated_at: new Date().toISOString() } : s);
+    saveMockList("mock_chat_sessions", updated);
+    return { message: "Session updated successfully" };
+  }
+
   try {
-    console.log('✏️ Updating user session:', sessionId, updates);
     const response = await api.put(`/chat/sessions/${sessionId}`, updates);
-    console.log('✅ User session updated successfully');
     return response.data;
   } catch (error) {
-    console.error('❌ Update chat session failed:', error.response?.data || error.message);
+    console.error('❌ Update chat session failed:', error);
     throw error;
   }
 };
 
-// Delete session (user-owned only)
 export const deleteChatSession = async (sessionId) => {
+  if (isDemoMode()) {
+    console.log("🎨 DEMO MODE ACTIVE - mocking deleteChatSession");
+    const sessions = getMockList("mock_chat_sessions", DEFAULT_CHAT_SESSIONS);
+    const filtered = sessions.filter(s => s.id !== Number(sessionId) && s.id !== String(sessionId));
+    saveMockList("mock_chat_sessions", filtered);
+    return { message: "Session deleted successfully" };
+  }
+
   try {
-    console.log('🗑️ Deleting user session:', sessionId);
     const response = await api.delete(`/chat/sessions/${sessionId}`);
-    console.log('✅ User session deleted successfully');
     return response.data;
   } catch (error) {
-    console.error('❌ Delete chat session failed:', error.response?.data || error.message);
+    console.error('❌ Delete chat session failed:', error);
     throw error;
   }
 };
 
-// 🔥 FIXED: Ask question in user session with PROJECT_ID parameter
-// export const askQuestionInSession = async (sessionId, query, useContext = true, selectedFiles = [], projectId = null) => {
-//   try {
-//     console.log('🔍 ASKING QUESTION IN USER SESSION:');
-//     console.log('  Session ID:', sessionId);
-//     console.log('  Query:', query);
-//     console.log('  Use Context:', useContext);
-//     console.log('  Selected Files:', selectedFiles);
-//     console.log('  🔥 PROJECT ID:', projectId); // 🔥 NEW DEBUG LOG
+export const askQuestionInSessionLangGraph = async (
+  sessionId, 
+  query, 
+  useContext = true, 
+  selectedFiles = [], 
+  projectId = null,
+  onStream = null
+) => {
+  if (isDemoMode()) {
+    console.log("🎨 DEMO MODE ACTIVE - mocking askQuestionInSessionLangGraph");
+    const allMessages = getMockList("mock_chat_messages", DEFAULT_CHAT_MESSAGES);
+    const messages = allMessages[sessionId] || [];
     
-//     // Validate inputs
-//     if (!sessionId || !query?.trim()) {
-//       throw new Error('Session ID and query are required');
-//     }
-    
-//     const requestPayload = {
-//       query: String(query).trim(),
-//       use_context: Boolean(useContext),
-//       selected_files: Array.isArray(selectedFiles) ? selectedFiles : []
-//     };
-    
-//     // 🔥 ADD PROJECT_ID TO PAYLOAD
-//     if (projectId !== null && !isNaN(Number(projectId))) {
-//       requestPayload.project_id = Number(projectId);
-//       console.log('🔥 Added project_id to payload:', requestPayload.project_id);
-//     }
-    
-//     console.log('📤 REQUEST PAYLOAD:', JSON.stringify(requestPayload, null, 2));
-    
-//     const response = await api.post(`/chat/sessions/${sessionId}/ask`, requestPayload);
-    
-//     console.log('✅ DATABASE RESPONSE:');
-//     console.log('  Answer Length:', response.data.answer?.length);
-//     console.log('  Message ID:', response.data.message_id);
-//     console.log('  User Message ID:', response.data.user_message_id);
-//     console.log('  Sources Count:', response.data.sources?.length || 0);
-//     console.log('  Context Used:', response.data.context_used);
-    
-//     return response.data;
-//   } catch (error) {
-//     console.error('❌ SESSION QUESTION ERROR:', {
-//       status: error.response?.status,
-//       data: error.response?.data,
-//       message: error.message
-//     });
-    
-//     // Handle specific error cases
-//     if (error.response?.status === 422) {
-//       throw new Error(`Invalid request: ${JSON.stringify(error.response.data.detail)}`);
-//     }
-    
-//     if (error.response?.status === 404) {
-//       throw new Error('Chat session not found or you do not have access.');
-//     }
-    
-//     if (error.response?.status === 403) {
-//       throw new Error('Access denied to this chat session.');
-//     }
-    
-//     throw error;
-//   }
-// };
+    // Add user message
+    const userMsgId = `m-user-${Date.now()}`;
+    const userMsg = {
+      id: userMsgId,
+      message_type: "user",
+      content: query,
+      created_at: new Date().toISOString(),
+      message_metadata: JSON.stringify({ context_used: false, sources: [] })
+    };
+    messages.push(userMsg);
 
-// Get conversation context (user-filtered)
+    // Generate AI response
+    const mockReply = generateSmartMockResponse(query, selectedFiles, projectId);
+    
+    const aiMsgId = `m-ai-${Date.now()}`;
+    const aiMsg = {
+      id: aiMsgId,
+      message_type: "ai",
+      content: mockReply.answer,
+      created_at: new Date(Date.now() + 500).toISOString(),
+      message_metadata: JSON.stringify({
+        context_used: mockReply.context_used,
+        sources: mockReply.sources,
+        has_chart: mockReply.has_chart,
+        chart_base64: mockReply.chartBase64,
+        chart_type: mockReply.chart_type
+      })
+    };
+    messages.push(aiMsg);
+    
+    allMessages[sessionId] = messages;
+    saveMockList("mock_chat_messages", allMessages);
+
+    // Update session message count & updated_at
+    const sessions = getMockList("mock_chat_sessions", DEFAULT_CHAT_SESSIONS);
+    const updatedSessions = sessions.map(s => {
+      if (s.id === Number(sessionId) || s.id === String(sessionId)) {
+        return {
+          ...s,
+          message_count: messages.length,
+          updated_at: new Date().toISOString()
+        };
+      }
+      return s;
+    });
+    saveMockList("mock_chat_sessions", updatedSessions);
+
+    // Sleep for simulated analysis typing delay
+    await new Promise(resolve => setTimeout(resolve, 800));
+
+    return {
+      answer: mockReply.answer,
+      message_id: aiMsgId,
+      user_message_id: userMsgId,
+      sources: mockReply.sources,
+      context_used: mockReply.context_used,
+      has_chart: mockReply.has_chart,
+      chartBase64: mockReply.chartBase64,
+      chart_type: mockReply.chart_type,
+      intent: "query_document",
+      agent_system: "document_analysis"
+    };
+  }
+
+  try {
+    const requestPayload = {
+      query: String(query).trim(),
+      use_context: Boolean(useContext),
+      selected_files: Array.isArray(selectedFiles) ? selectedFiles : []
+    };
+    if (projectId !== null && !isNaN(Number(projectId))) {
+      requestPayload.project_id = Number(projectId);
+    }
+    const response = await api.post(`/chat/sessions/${sessionId}/ask`, requestPayload);
+    return response.data;
+  } catch (error) {
+    console.error('❌ LANGGRAPH SESSION ERROR:', error);
+    throw error;
+  }
+};
+
 export const getChatContext = async (sessionId) => {
+  if (isDemoMode()) {
+    return [
+      { text: "Demo document context chunk 1", score: 0.92 },
+      { text: "Demo document context chunk 2", score: 0.85 }
+    ];
+  }
   try {
     const response = await api.get(`/chat/sessions/${sessionId}/context`);
     return response.data;
@@ -881,18 +1105,22 @@ export const getChatContext = async (sessionId) => {
   }
 };
 
-// ✅ FALLBACK: General question for non-session queries
 export const askGeneralQuestion = async (query) => {
+  if (isDemoMode()) {
+    console.log("🎨 DEMO MODE ACTIVE - mocking askGeneralQuestion");
+    const mockReply = generateSmartMockResponse(query, [], null);
+    return {
+      answer: mockReply.answer,
+      sources: [],
+      context_used: false,
+      message_id: `general-${Date.now()}`
+    };
+  }
+
   try {
-    console.log('🔍 Asking general question:', query);
-    const response = await api.post('/chat/general', {
-      query: String(query).trim(),
-    });
-    console.log('✅ General question answered');
+    const response = await api.post('/chat/general', { query: String(query).trim() });
     return response.data;
   } catch (error) {
-    console.error('❌ General question failed:', error.response?.data || error.message);
-    // Return fallback response
     return {
       answer: "I'm your AI assistant! I can help with general questions. For document analysis, please select a project from the sidebar.",
       sources: [],
@@ -902,108 +1130,19 @@ export const askGeneralQuestion = async (query) => {
   }
 };
 
-
-
-/* ======================
-   LANGGRAPH INTEGRATION
-   ====================== */
-
-// 🔥 NEW: LangGraph-powered session query with streaming support
-export const askQuestionInSessionLangGraph = async (
-  sessionId, 
-  query, 
-  useContext = true, 
-  selectedFiles = [], 
-  projectId = null,
-  onStream = null
-) => {
-  try {
-    console.log('🚀 LANGGRAPH SESSION QUERY:');
-    console.log('   Session ID:', sessionId);
-    console.log('   Query:', query);
-    console.log('   Project ID:', projectId);
-    console.log('   Streaming:', !!onStream);
-
-    // Validate inputs
-    if (!sessionId || !query?.trim()) {
-      throw new Error('Session ID and query are required');
-    }
-
-    const requestPayload = {
-      query: String(query).trim(),
-      use_context: Boolean(useContext),
-      selected_files: Array.isArray(selectedFiles) ? selectedFiles : []
-    };
-
-    // Add project_id to payload if provided
-    if (projectId !== null && !isNaN(Number(projectId))) {
-      requestPayload.project_id = Number(projectId);
-      console.log('   Added project_id to payload:', requestPayload.project_id);
-    }
-
-    console.log('📤 LANGGRAPH REQUEST PAYLOAD:', JSON.stringify(requestPayload, null, 2));
-
-    // If streaming callback provided, use streaming endpoint (future enhancement)
-    if (onStream) {
-      // TODO: Implement Server-Sent Events (SSE) streaming
-      // For now, fall back to regular request
-      console.log('⚠️ Streaming not yet implemented, using regular request');
-    }
-
-    const response = await api.post(`/chat/sessions/${sessionId}/ask`, requestPayload);
-
-    console.log('✅ LANGGRAPH RESPONSE:');
-    console.log('   Answer Length:', response.data.answer?.length);
-    console.log('   Intent:', response.data.intent);
-    console.log('   Documents Retrieved:', response.data.documents_retrieved);
-    console.log('   Sources Count:', response.data.sources?.length || 0);
-    console.log('   Context Used:', response.data.context_used);
-    console.log('   Enhanced Query:', response.data.enhanced_query);
-    console.log('   Agent System:', response.data.agent_system || 'standard');
-
-    return response.data;
-
-  } catch (error) {
-    console.error('❌ LANGGRAPH SESSION ERROR:', {
-      status: error.response?.status,
-      data: error.response?.data,
-      message: error.message
-    });
-
-    // Handle specific error cases
-    if (error.response?.status === 422) {
-      throw new Error(`Invalid request: ${JSON.stringify(error.response.data.detail)}`);
-    }
-    
-    if (error.response?.status === 404) {
-      throw new Error('Chat session not found or you do not have access.');
-    }
-    
-    if (error.response?.status === 403) {
-      throw new Error('Access denied to this chat session.');
-    }
-
-    throw error;
-  }
-};
-
-// 🔥 NEW: Get LangGraph workflow status (for debugging)
 export const getLangGraphStatus = async () => {
+  if (isDemoMode()) {
+    return { available: true, status: "healthy", version: "0.2.1" };
+  }
   try {
     const response = await api.get('/langgraph/status');
     return response.data;
   } catch (error) {
-    console.error('❌ Get LangGraph status failed:', error);
     return { available: false, error: error.message };
   }
 };
 
-// Update the original function to use LangGraph by default
-// export const askQuestionInSessionOriginal = askQuestionInSession; // Backup original
-
 // Override with LangGraph version
 export { askQuestionInSessionLangGraph as askQuestionInSession };
-
-
 
 export default api;

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { loginUser } from "../../services/api";
-import { Eye, EyeOff } from "lucide-react";
+import { loginUser, isDemoMode } from "../../services/api";
+import { Eye, EyeOff, Crown, Shield, User, Sparkles } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import { useAuth } from "../../context/AuthContext";
 import { getDashboardRoute } from "../../utils/roleUtils"; // ✅ ADD: Import helper
@@ -15,6 +15,26 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+
+  const handleQuickLogin = (email, password) => {
+    setForm({ email, password });
+    setLoading(true);
+    loginUser({ email, password }).then(async ({ access_token }) => {
+      if (!access_token) throw new Error("No token returned");
+      await login(null, access_token);
+      toast.success("🎉 Welcome to the Demo!");
+      setTimeout(() => {
+        const storedUser = JSON.parse(localStorage.getItem("user"));
+        const dashboardRoute = getDashboardRoute(storedUser?.role);
+        navigate(dashboardRoute, { replace: true });
+      }, 100);
+    }).catch(err => {
+      const msg = err.response?.data?.detail || err.message || "Login failed";
+      toast.error(`❌ ${msg}`);
+    }).finally(() => {
+      setLoading(false);
+    });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -100,6 +120,67 @@ function Login() {
               Create account
             </button>
           </p>
+          
+          {isDemoMode() && (
+            <div className="mt-6 border-t border-slate-200 pt-5">
+              <h2 className="text-sm font-semibold text-slate-700 mb-3 flex items-center justify-center gap-1">
+                <Sparkles className="w-4 h-4 text-emerald-500" />
+                Demo Mode Quick Login Accounts
+              </h2>
+              <div className="grid grid-cols-1 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleQuickLogin("superadmin@docai.com", "admin123")}
+                  className="flex items-center justify-between p-2.5 rounded-lg border border-slate-200 hover:border-emerald-500 bg-slate-50 hover:bg-emerald-50/20 text-left transition-all duration-200 cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-1.5 bg-red-100 rounded-lg text-red-600">
+                      <Crown className="w-4.5 h-4.5" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold text-slate-800">Super Admin</div>
+                      <div className="text-[10px] text-slate-500">Full system control, manage organizations</div>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-medium text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded">Quick Login</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleQuickLogin("orgadmin@docai.com", "org123")}
+                  className="flex items-center justify-between p-2.5 rounded-lg border border-slate-200 hover:border-emerald-500 bg-slate-50 hover:bg-emerald-50/20 text-left transition-all duration-200 cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-1.5 bg-blue-100 rounded-lg text-blue-600">
+                      <Shield className="w-4.5 h-4.5" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold text-slate-800">Organization Admin</div>
+                      <div className="text-[10px] text-slate-500">Manage org users, compliance & documents</div>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-medium text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded">Quick Login</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleQuickLogin("user@docai.com", "user123")}
+                  className="flex items-center justify-between p-2.5 rounded-lg border border-slate-200 hover:border-emerald-500 bg-slate-50 hover:bg-emerald-50/20 text-left transition-all duration-200 cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-1.5 bg-slate-200 rounded-lg text-slate-600">
+                      <User className="w-4.5 h-4.5" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold text-slate-800">Regular User</div>
+                      <div className="text-[10px] text-slate-500">Upload guidelines, chat with documents</div>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-medium text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded">Quick Login</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </>
