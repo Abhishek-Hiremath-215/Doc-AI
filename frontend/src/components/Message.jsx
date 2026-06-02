@@ -149,7 +149,7 @@ function Message({
             {sessionId && (
               <>
                 <span>•</span>
-                <span className="text-blue-500 font-medium">Session {sessionId.slice(-6)}</span>
+                <span className="text-blue-500 font-medium">Session {String(sessionId).slice(-6)}</span>
               </>
             )}
           </div>
