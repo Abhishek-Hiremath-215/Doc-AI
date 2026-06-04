@@ -1,6 +1,5 @@
 # DocAI: Advanced Hybrid Graph-Vector RAG Platform 🚀
-**Live Demo URL:** [https://do-cai.netlify.app/](https://do-cai.netlify.app/)
-
+**Live Demo URL: [Launch Live Netlify Demo](https://do-cai.netlify.app/)**
 
 DocAI is a high-performance, enterprise-grade **Retrieval-Augmented Generation (RAG)** SaaS platform designed for deep document intelligence. It leverages a modern, dual **Hybrid Graph-Vector** database architecture to analyze complex relationships and extract context-aware insights from enterprise documents.
 
